@@ -33,15 +33,31 @@ function History() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerWidth, setDrawerWidth] = useState('60vw'); // Default width
     const [searchTerm, setSearchTerm] = useState('');
-    const [open, setOpen] = useState(commands.map(() => false));
-    const [fade, setFade] = useState(commands.map(() => false));
+    const [open, setOpen] = useState([]);
+    const [fade, setFade] = useState([]);
+    const [gKeyPressed, setGKeyPressed] = useState(false);
+    const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
+
+
     const [anchorEl, setAnchorEl] = useState(null);
 
-    const listItemRefs = useRef(commands.map(() => createRef()));
+    const listItemRefs = useRef([]);
 
     const toggleDrawerWidth = () => {
         setDrawerWidth(drawerWidth === '60vw' ? '90vw' : '60vw');
     };
+
+    const searchInputRef = useRef(null);
+
+    useEffect(() => {
+        searchInputRef.current.focus();
+    }, []);
+
+    useEffect(() => {
+        setOpen(commands.map(() => false));
+        setFade(commands.map(() => false));
+        listItemRefs.current = commands.map(() => createRef());
+    }, [commands]);
 
     const handleContextClick = (event) => {
         setAnchorEl(event.currentTarget);
@@ -68,6 +84,24 @@ function History() {
     }, []);
 
     useEffect(() => {
+        const handleGlobalKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                searchInputRef.current.focus();
+            } else if (document.activeElement.tagName === 'LI' && listItemRefs.current.length > 0) {
+                const currentIndex = listItemRefs.current.findIndex(ref => ref.current === document.activeElement);
+                if ((event.key === 'j' || event.key === 'ArrowDown') && currentIndex < listItemRefs.current.length - 1) {
+                    listItemRefs.current[currentIndex + 1].current.focus();
+                } else if ((event.key === 'k' || event.key === 'ArrowUp') && currentIndex > 0) {
+                    listItemRefs.current[currentIndex - 1].current.focus();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [listItemRefs, searchInputRef]);
+
+    useEffect(() => {
         const timeouts = commands.map((_, index) =>
             setTimeout(() => {
                 setOpen(prevOpen => {
@@ -75,7 +109,7 @@ function History() {
                     newOpen[index] = true;
                     return newOpen;
                 });
-            }, index * 80) // Change delay as needed
+            }, index * 80)
         );
 
         return () => timeouts.forEach(clearTimeout); // Clean up on unmount
@@ -206,8 +240,14 @@ function History() {
                     variant="outlined"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    // inputRef={searchBoxRef}
-                    inputRef={input => input && input.focus()}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                            setSearchTerm('');
+                        }
+                    }}
+                    // inputRef={input => input && input.focus()}
+                    inputRef={searchInputRef}
+                // autoFocus
                 />
             </Box>
             <Box display="flex">
@@ -225,7 +265,15 @@ function History() {
                                         onClick={() => handleListItemClick(command.id)}
                                     >
                                         <ListItem
+                                            ref={listItemRefs.current[index]}
+                                            tabIndex={0}
                                             onClick={() => handleListItemClick(command.id)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleListItemClick(command.id);
+                                                }
+                                            }}
+
                                             sx={{
                                                 mb: 1,
                                                 borderRadius: '4px',

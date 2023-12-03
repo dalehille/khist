@@ -74,7 +74,8 @@ app.get('/data/:dbName', (req, res) => {
     db.all(`SELECT id, timestamp, command, exit_status FROM kwrapper`, [], (err, rows) => {
         if (err) {
             console.log(`error in /data/:dbName route: ${err}`)
-            return res.status(400).json({ error: 'dbName error', message: err });
+            return res.status(500).json([]);
+            // return res.status(400).json({ error: 'dbName error', message: err });
         }
         // Send the initial data to the UI
         res.json(rows);
@@ -86,9 +87,10 @@ app.get('/data/:dbName', (req, res) => {
             db.all(`SELECT id, timestamp, command, exit_status FROM kwrapper`, [], (err, updatedRows) => {
                 if (err) {
                     console.log(`error in /data/:dbName route: ${err}`)
-                    return;
+                    return res.status(500).json([]);
                 }
                 // Send the updated data to all connected WebSocket clients
+                updatedRows = Array.isArray(updatedRows) ? updatedRows : [updatedRows];
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify(updatedRows));

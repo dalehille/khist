@@ -17,12 +17,13 @@ then
 else
     original_command="kubectl $@"
 fi
-echo "Running command: $original_command"
 output=$(script -q /dev/null $original_command | cat | base64) 
-exit_status=$?
+# exit_status=${PIPESTATUS[0]}
+# echo $exit_status
+# exit_status=$?
 
 # create a sqlite db if it doesn't exist. put it in the home directory of the user in .kwrapper
-# create a table called kwrapper with columns: timestamp, command, output, exit_status
+# create a table called kwrapper with columns: timestamp, command, output
 # insert the values into the table
 # we should have one database file per kube context. the db file should be named after the kube context
 context=$(kubectl config current-context 2>/dev/null)
@@ -42,18 +43,18 @@ CREATE TABLE IF NOT EXISTS kwrapper (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT NOT NULL,
     command TEXT NOT NULL,
-    output TEXT NOT NULL,
-    exit_status INTEGER NOT NULL
+    output TEXT NOT NULL
 );
 EOF
+    # exit_status INTEGER NOT NULL
 
+# INSERT INTO kwrapper (timestamp, command, output, exit_status) VALUES (
 timestamp=$(date +%Y-%m-%d\ %H:%M:%S)
 sqlite3 $db_file <<EOF
-INSERT INTO kwrapper (timestamp, command, output, exit_status) VALUES (
+INSERT INTO kwrapper (timestamp, command, output) VALUES (
     "$timestamp",
     "$original_command",
-    "$output", 
-    "$exit_status"
+    "$output"
 );
 EOF
 
@@ -61,7 +62,7 @@ EOF
 echo -e "$output" | base64 -d
 
 # exit with the same exit status as the original command
-exit $exit_status
+# exit $exit_status
 
 # example sqlite3 commands to query this data:
 # sqlite3 ~/.kwrapper/kind-kind_kwrapper.db "select * from kwrapper;"

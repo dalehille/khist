@@ -29,6 +29,7 @@ function History() {
     const { routeId } = useParams();
     const [commands, setCommands] = useState([]);
     const [clickedCommand, setClickedCommand] = useState('');
+    const [clickedDate, setClickedDate] = useState('');
     const [output, setOutput] = useState('');
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerWidth, setDrawerWidth] = useState('60vw'); // Default width
@@ -123,14 +124,13 @@ function History() {
                     newFade[index] = true;
                     return newFade;
                 });
-            }, index * 90) // Change delay as needed
+            }, index * 90)
         );
 
         return () => timeouts.forEach(clearTimeout); // Clean up on unmount
     }, [commands]);
 
     useEffect(() => {
-        // Update listItemRefs whenever commands changes
         listItemRefs.current = commands.map(() => createRef());
     }, [commands]);
 
@@ -172,12 +172,13 @@ function History() {
                     setOutput(convert.toHtml(data.output));
                 }
                 setClickedCommand(data.command);
+                setClickedDate(data.timestamp);
             });
     };
 
     const handleListItemClick = (id) => {
         handleClick(id);
-        setDrawerOpen(true); // Open the drawer when a list item is clicked
+        setDrawerOpen(true);
     };
 
     const toggleDrawer = (open) => (event) => {
@@ -192,9 +193,7 @@ function History() {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = output;
             tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-            // Replace block-level elements with newline characters after their content
             tempDiv.querySelectorAll('div, p').forEach(block => block.append('\n'));
-            // Use the textContent property to get the text, preserving newlines
             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
 
             await navigator.clipboard.writeText(textToCopy);
@@ -215,7 +214,6 @@ function History() {
         >
             <Typography variant="h5" component="h1" gutterBottom onClick={handleContextClick} style={{ cursor: 'pointer', color: 'blue' }}>
                 {routeId}
-                {/* <KeyboardArrowDownIcon /> */}
             </Typography>
             <Menu
                 id="simple-menu"
@@ -304,14 +302,6 @@ function History() {
                                                             color="textSecondary"
                                                             style={{ marginRight: '16px' }}
                                                         >
-                                                            {command.exit_status === 0 ? 'Success' : 'Error'}
-                                                        </Typography>
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            color="textSecondary"
-                                                            style={{ marginRight: '16px' }}
-                                                        >
                                                             {command.timestamp}
                                                         </Typography>
                                                         <Typography
@@ -364,26 +354,31 @@ function History() {
                         <Box
                             sx={{
                                 display: 'flex',
+                                flexDirection: 'column',
                                 justifyContent: 'space-between',
                                 alignItems: 'left',
-                                marginBottom: '16px',
+                                marginBottom: '8px',
                                 backgroundColor: 'f5f5f5',
-                                // padding: '10px'
                             }}
                         >
+
                             <Typography
                                 variant="h6"
                                 style={{
                                     fontFamily: 'monospace',
                                     textAlign: 'left',
-                                    // overflowX: 'auto',
-                                    // padding: '18px',
-                                    // backgroundColor: 'grey',
-                                    // color: 'white',
+                                    width: '100%'
+                                }}
+                            > {clickedCommand}</Typography>
+                            <Typography
+                                variant="h9"
+                                style={{
+                                    fontFamily: 'monospace',
+                                    textAlign: 'left',
                                     width: '100%'
                                 }}
 
-                            > {`$`} {clickedCommand}</Typography>
+                            > {clickedDate}</Typography>
                         </Box>
                         <Typography
                             variant="body1"
@@ -393,10 +388,8 @@ function History() {
                                 textAlign: 'left',
                                 overflowX: 'auto',
                                 padding: '18px',
-                                // minHeight: '80vh',
-                                // backgroundColor: 'black',
-                                backgroundColor: '#1e1e1e', // Dark grey background
-                                color: 'white', // White text
+                                backgroundColor: '#1e1e1e',
+                                color: 'white',
                             }}
                         >
                             <code dangerouslySetInnerHTML={{ __html: output }}></code>

@@ -71,7 +71,7 @@ app.get('/data/:dbName', (req, res) => {
         }
     });
 
-    db.all(`SELECT id, timestamp, command, exit_status FROM kwrapper`, [], (err, rows) => {
+    db.all(`SELECT id, timestamp, command FROM kwrapper`, [], (err, rows) => {
         if (err) {
             console.log(`error in /data/:dbName route: ${err}`)
             return res.status(500).json([]);
@@ -84,7 +84,7 @@ app.get('/data/:dbName', (req, res) => {
         let watcher = chokidar.watch(dbPath);
         watcher.on('change', () => {
             // When the database file changes, query the data and send it to all connected WebSocket clients
-            db.all(`SELECT id, timestamp, command, exit_status FROM kwrapper`, [], (err, updatedRows) => {
+            db.all(`SELECT id, timestamp, command FROM kwrapper`, [], (err, updatedRows) => {
                 if (err) {
                     console.log(`error in /data/:dbName route: ${err}`)
                     return res.status(500).json([]);

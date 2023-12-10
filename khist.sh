@@ -26,7 +26,7 @@ export FZF_DEFAULT_OPTS='--color=bg+:#4c4846,bg:#423c3a,spinner:#fc6955,hl:#a298
 
 # Use sqlite3 to get a list of all kubectl commands run in the past
 # This assumes you have a table named 'kwrapper' with a 'command' column
-COMMANDS=$(sqlite3 $DB_PATH "SELECT id, timestamp, command FROM kwrapper")
+COMMANDS=$(sqlite3 $DB_PATH "SELECT id, timestamp, output_size, command FROM kwrapper")
 # echo "$COMMANDS | fzf --reverse"
 
 # Display the output of the selected command

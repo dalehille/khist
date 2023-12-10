@@ -19,9 +19,11 @@ import Collapse from '@mui/material/Collapse';
 import Fade from '@mui/material/Fade';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-
-
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const convert = new AnsiToHtml({ newline: true });
 
@@ -36,9 +38,12 @@ function History() {
     const [searchTerm, setSearchTerm] = useState('');
     const [open, setOpen] = useState([]);
     const [fade, setFade] = useState([]);
-    const [gKeyPressed, setGKeyPressed] = useState(false);
-    const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
-
+    const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [focusedCommandId, setFocusedCommandId] = useState(null);
+    const [editMode, setEditMode] = useState(false);
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [showDeleteCancelButtons, setShowDeleteCancelButtons] = useState(false);
 
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -92,10 +97,13 @@ function History() {
                 const currentIndex = listItemRefs.current.findIndex(ref => ref.current === document.activeElement);
                 if ((event.key === 'j' || event.key === 'ArrowDown') && currentIndex < listItemRefs.current.length - 1) {
                     listItemRefs.current[currentIndex + 1].current.focus();
+                    event.stopPropagation();
                 } else if ((event.key === 'k' || event.key === 'ArrowUp') && currentIndex > 0) {
                     listItemRefs.current[currentIndex - 1].current.focus();
+                    event.stopPropagation();
                 }
             }
+
         };
 
         window.addEventListener('keydown', handleGlobalKeyDown);
@@ -176,6 +184,32 @@ function History() {
             });
     };
 
+    const handleDelete = (commandId) => {
+        return new Promise((resolve, reject) => {
+            fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
+                method: 'DELETE',
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    resolve();
+                })
+                .catch(error => {
+                    setSnackbarMessage(`Error: ${error.message}`);
+                    setOpenSnackbar(true);
+                    reject(error);
+                });
+        });
+    };
+
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpenSnackbar(false);
+    };
+
     const handleListItemClick = (id) => {
         handleClick(id);
         setDrawerOpen(true);
@@ -187,6 +221,18 @@ function History() {
         }
         setDrawerOpen(open);
     };
+
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
 
     const copyToClipboard = async () => {
         try {
@@ -201,6 +247,38 @@ function History() {
             console.error('Failed to copy: ', err);
         }
     };
+
+    const handleCheckboxChange = (event, id) => {
+        if (event.target.checked) {
+            setSelectedItems([...selectedItems, id]);
+        } else {
+            setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+        }
+    };
+
+    const handleDeleteSelected = () => {
+        Promise.all(selectedItems.map(id => handleDelete(id)))
+            .then(() => {
+                setCommands(commands.filter(command => !selectedItems.includes(command.id)));
+                setSelectedItems([]);
+                setEditMode(false);
+                setShowDeleteCancelButtons(false);
+                setSnackbarMessage('Command deleted successfully!');
+                setOpenSnackbar(true);
+            })
+            .catch(error => {
+                console.error('Failed to delete some items:', error);
+            });
+    };
+
+    const handleCancel = () => {
+        setSelectedItems([]);
+        setEditMode(false);
+        setShowDeleteCancelButtons(false);
+    };
+    useEffect(() => {
+        setShowDeleteCancelButtons(selectedItems.length > 0);
+    }, [selectedItems]);
 
     return (
         <Box
@@ -231,6 +309,7 @@ function History() {
             <Box
                 display="flex"
                 justifyContent="left"
+                alignItems="flex-end"
             >
                 <TextField
                     id="search-box"
@@ -243,10 +322,21 @@ function History() {
                             setSearchTerm('');
                         }
                     }}
-                    // inputRef={input => input && input.focus()}
                     inputRef={searchInputRef}
-                // autoFocus
                 />
+                <Button onClick={() => setEditMode(!editMode)}>
+                    Edit
+                </Button>
+                {showDeleteCancelButtons && (
+                    <>
+                        <Button onClick={handleCancel}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDeleteSelected}>
+                            Delete
+                        </Button>
+                    </>
+                )}
             </Box>
             <Box display="flex">
 
@@ -260,15 +350,23 @@ function History() {
                             <Collapse in={open[index]} timeout="auto" unmountOnExit key={command.id + command.timestamp}>
                                 <Fade in={fade[index]} timeout={500}>
                                     <div
-                                        onClick={() => handleListItemClick(command.id)}
+                                        onClick={() => {
+                                            if (!editMode) {
+                                                handleListItemClick(command.id);
+                                            }
+                                        }}
                                     >
                                         <ListItem
+                                            onFocus={() => setFocusedCommandId(command.id)}
                                             ref={listItemRefs.current[index]}
                                             tabIndex={0}
-                                            onClick={() => handleListItemClick(command.id)}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
+                                                if (e.key === 'Enter' && !editMode) {
                                                     handleListItemClick(command.id);
+                                                }
+                                                if (e.key === ' ' || e.key === 'Enter' && editMode) {
+                                                    handleCheckboxChange({ target: { checked: !selectedItems.includes(command.id) } }, command.id);
+                                                    e.preventDefault(); // prevent the default action of scrolling the page
                                                 }
                                             }}
 
@@ -277,14 +375,16 @@ function History() {
                                                 borderRadius: '4px',
                                                 border: '1px solid',
                                                 borderColor: '#C5B4E3',
-                                                '&:hover': {
-                                                    bgcolor: 'primary.light',
-                                                    color: 'white',
-                                                },
                                                 textDecoration: 'none',
                                                 textAlign: 'left'
                                             }}
                                         >
+                                            {editMode && (
+                                                <Checkbox
+                                                    checked={selectedItems.includes(command.id)}
+                                                    onChange={(e) => handleCheckboxChange(e, command.id)}
+                                                />
+                                            )}
                                             <ListItemText
                                                 primary={
                                                     <React.Fragment>
@@ -304,6 +404,7 @@ function History() {
                                                         >
                                                             {command.timestamp}
                                                         </Typography>
+
                                                         <Typography
                                                             component="span"
                                                             variant="body2"
@@ -311,6 +412,14 @@ function History() {
                                                             style={{ fontWeight: 'bold' }}
                                                         >
                                                             {command.command}
+                                                        </Typography>
+                                                        <Typography
+                                                            component="span"
+                                                            variant="body2"
+                                                            color="textSecondary"
+                                                            style={{ marginLeft: '6px' }}
+                                                        >
+                                                            ({formatBytes(command.output_size)})
                                                         </Typography>
                                                     </React.Fragment>
                                                 }
@@ -347,8 +456,17 @@ function History() {
                                 {drawerWidth === '60vw' ? 'Expand' : 'Shrink'}
                             </Button>
                             <Typography variant="h6">Output</Typography>
-                            <Button onClick={copyToClipboard} startIcon={<ContentCopyIcon />}>
-                                Copy
+
+                            <Button
+                                onClick={() => {
+                                    handleDelete(focusedCommandId).then(() => {
+                                        setCommands(commands.filter(command => command.id !== focusedCommandId));
+                                        setDrawerOpen(false);
+                                    });
+                                }}
+                                startIcon={<DeleteIcon />}
+                            >
+                                Delete
                             </Button>
                         </Box>
                         <Box
@@ -370,15 +488,26 @@ function History() {
                                     width: '100%'
                                 }}
                             > {clickedCommand}</Typography>
-                            <Typography
-                                variant="h9"
-                                style={{
-                                    fontFamily: 'monospace',
-                                    textAlign: 'left',
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    paddingRight: '10px',
                                     width: '100%'
-                                }}
+                                }}>
+                                <Typography
+                                    variant="h9"
+                                    style={{
+                                        fontFamily: 'monospace',
+                                        textAlign: 'left',
+                                        width: '100%'
+                                    }}
 
-                            > {clickedDate}</Typography>
+                                > {clickedDate}</Typography>
+                                <Button onClick={copyToClipboard} startIcon={<ContentCopyIcon />}>
+                                    Copy
+                                </Button>
+                            </Box>
                         </Box>
                         <Typography
                             variant="body1"
@@ -397,6 +526,13 @@ function History() {
                     </Box>
                 </Drawer >
             </Box >
+
+            <Snackbar open={openSnackbar} autoHideDuration={1000} onClose={handleCloseSnackbar}>
+                <Alert onClose={handleCloseSnackbar} severity={snackbarMessage.startsWith('Error') ? 'error' : 'success'} sx={{ width: '100%' }}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
+
 
         </Box>
     )

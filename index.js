@@ -71,7 +71,7 @@ app.get('/data/:dbName', (req, res) => {
         }
     });
 
-    db.all(`SELECT id, timestamp, command FROM kwrapper`, [], (err, rows) => {
+    db.all(`SELECT id, timestamp, command, output_size FROM kwrapper`, [], (err, rows) => {
         if (err) {
             console.log(`error in /data/:dbName route: ${err}`)
             return res.status(500).json([]);
@@ -84,7 +84,7 @@ app.get('/data/:dbName', (req, res) => {
         let watcher = chokidar.watch(dbPath);
         watcher.on('change', () => {
             // When the database file changes, query the data and send it to all connected WebSocket clients
-            db.all(`SELECT id, timestamp, command FROM kwrapper`, [], (err, updatedRows) => {
+            db.all(`SELECT id, timestamp, command, output_size FROM kwrapper`, [], (err, updatedRows) => {
                 if (err) {
                     console.log(`error in /data/:dbName route: ${err}`)
                     return res.status(500).json([]);
@@ -134,16 +134,17 @@ app.get('/data/:dbName/:id', (req, res) => {
 
 // a route that lets you delete a row
 app.delete('/data/:dbName/:id', (req, res) => {
+    console.log(`delete id: ${req.params.id}`)
     let db = new sqlite3.Database(`${os.homedir()}/.kwrapper/${req.params.dbName}_kwrapper.db`, sqlite3.OPEN_READWRITE, (err) => {
         if (err) {
             console.error(err.message);
+            res.status(500).json({ message: 'Database error', error: err.message });
         }
-        console.log('Connected to the kwrapper database.');
     });
 
     db.run(`DELETE FROM kwrapper WHERE id = ?`, [req.params.id], (err) => {
         if (err) {
-            throw err;
+            res.status(500).json({ message: 'Database error', error: err.message });
         }
         res.status(200).send('OK');
     });

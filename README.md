@@ -1,0 +1,44 @@
+# khist
+
+Khist is a project that wraps the kubectl command and captures its output. It stores the timestamp, command, output, and output size in a SQLite database. This tool is especially useful for debugging and auditing purposes in a Kubernetes environment.
+
+You can interact with the history in three ways:
+
+1. Via the built-in web interface which provides a user-friendly way to view the history.
+2. Using khist.sh with `fzf` for a fuzzy search through the history.
+3. Directly via the SQLite database with your own code
+
+
+While the `history` command in a shell provides a list of commands that have been entered, it doesn't provide any of the output from those commands. This can make it difficult to recall exactly what was returned from a specific command, especially when debugging or auditing. Khist addresses this issue by not only capturing the commands entered but also their output. This allows for a more comprehensive review of past actions, making it a valuable tool for any Kubernetes environment.
+
+Khist also maintains a separate history for each k8s context. This means that you can have a distinct record of commands for each cluster you interact with. This feature enhances the tool's utility in multi-cluster environments, allowing for precise tracking and auditing of actions on a per-cluster basis.
+
+## Getting Started
+
+- clone this repo
+- edit your .zshrc , .bashrc or equivalent for your shell and add an alist to the kwrapper.sh script
+
+ex:
+```shell
+alias k=/Users/you/kubecapture/kwrapper.sh
+alias kd='k get deploy'
+alias kp='k get pods'
+```
+- connect to your clusters and use kubectl as you normally would. Your commands and their output are stored in db files in your home directory in a `.kwrapper` directory.
+
+## start the backend
+- cd node
+- npm install
+- npm run dev
+
+## start the ui
+- cd ui
+- npm install
+- npm run dev
+
+- open http://localhost:5173
+
+### Prerequisites
+
+npm and nodejs if yuo want to run the web interface
+

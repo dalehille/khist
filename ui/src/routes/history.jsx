@@ -24,6 +24,11 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 
 const convert = new AnsiToHtml({ newline: true });
 
@@ -44,11 +49,16 @@ function History() {
     const [editMode, setEditMode] = useState(false);
     const [selectedItems, setSelectedItems] = useState([]);
     const [showDeleteCancelButtons, setShowDeleteCancelButtons] = useState(false);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [commandToDelete, setCommandToDelete] = useState(null);
 
     const [anchorEl, setAnchorEl] = useState(null);
 
     const listItemRefs = useRef([]);
 
+    const handleOpenDialog = () => {
+        setOpenDialog(true);
+    };
     const toggleDrawerWidth = () => {
         setDrawerWidth(drawerWidth === '60vw' ? '90vw' : '60vw');
     };
@@ -184,24 +194,6 @@ function History() {
             });
     };
 
-    const handleDelete = (commandId) => {
-        return new Promise((resolve, reject) => {
-            fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
-                method: 'DELETE',
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    resolve();
-                })
-                .catch(error => {
-                    setSnackbarMessage(`Error: ${error.message}`);
-                    setOpenSnackbar(true);
-                    reject(error);
-                });
-        });
-    };
 
     const handleCloseSnackbar = (event, reason) => {
         if (reason === 'clickaway') {
@@ -248,6 +240,95 @@ function History() {
         }
     };
 
+    const w = (event, id) => {
+        if (event.target.checked) {
+            setSelectedItems([...selectedItems, id]);
+        } else {
+            setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+        }
+    };
+
+    const performDelete = () => {
+        if (Array.isArray(commandToDelete)) {
+            Promise.all(commandToDelete.map(id => deleteCommand(id)))
+                .then(() => {
+                    setCommands(commands.filter(command => !commandToDelete.includes(command.id)));
+                    setSelectedItems([]);
+                    setEditMode(false);
+                    setShowDeleteCancelButtons(false);
+                    setSnackbarMessage('Command deleted successfully!');
+                    setOpenSnackbar(true);
+                })
+                .catch(error => {
+                    console.error('Failed to delete some items:', error);
+                });
+        } else {
+            deleteCommand(commandToDelete)
+                .then(() => {
+                    setCommands(commands.filter(command => command.id !== commandToDelete));
+                    setDrawerOpen(false);
+                });
+        }
+        setCommandToDelete(null);
+        setOpenDialog(false);
+    };
+
+    const deleteCommand = (commandId) => {
+        return fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
+            method: 'DELETE',
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .catch(error => {
+                setSnackbarMessage(`Error: ${error.message}`);
+                setOpenSnackbar(true);
+                throw error;
+            });
+    };
+
+    const handleDelete = (commandId) => {
+        setCommandToDelete(commandId);
+        handleOpenDialog();
+        // return new Promise((resolve, reject) => {
+        //     fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
+        //         method: 'DELETE',
+        //     })
+        //         .then(response => {
+        //             if (!response.ok) {
+        //                 throw new Error('Network response was not ok');
+        //             }
+        //             resolve();
+        //         })
+        //         .catch(error => {
+        //             setSnackbarMessage(`Error: ${error.message}`);
+        //             setOpenSnackbar(true);
+        //             reject(error);
+        //         });
+        // });
+    };
+
+    const handleDeleteSelected = () => {
+        setCommandToDelete(selectedItems);
+        handleOpenDialog();
+
+        // Promise.all(selectedItems.map(id => handleDelete(id)))
+        //     .then(() => {
+        //         setCommands(commands.filter(command => !selectedItems.includes(command.id)));
+        //         setSelectedItems([]);
+        //         setEditMode(false);
+        //         setShowDeleteCancelButtons(false);
+        //         setSnackbarMessage('Command deleted successfully!');
+        //         setOpenSnackbar(true);
+        //     })
+        //     .catch(error => {
+        //         console.error('Failed to delete some items:', error);
+        //     });
+    };
+
+
     const handleCheckboxChange = (event, id) => {
         if (event.target.checked) {
             setSelectedItems([...selectedItems, id]);
@@ -256,20 +337,6 @@ function History() {
         }
     };
 
-    const handleDeleteSelected = () => {
-        Promise.all(selectedItems.map(id => handleDelete(id)))
-            .then(() => {
-                setCommands(commands.filter(command => !selectedItems.includes(command.id)));
-                setSelectedItems([]);
-                setEditMode(false);
-                setShowDeleteCancelButtons(false);
-                setSnackbarMessage('Command deleted successfully!');
-                setOpenSnackbar(true);
-            })
-            .catch(error => {
-                console.error('Failed to delete some items:', error);
-            });
-    };
 
     const handleCancel = () => {
         setSelectedItems([]);
@@ -364,7 +431,7 @@ function History() {
                                                 if (e.key === 'Enter' && !editMode) {
                                                     handleListItemClick(command.id);
                                                 }
-                                                if (e.key === ' ' || e.key === 'Enter' && editMode) {
+                                                if (editMode && (e.key === ' ' || e.key === 'Enter')) {
                                                     handleCheckboxChange({ target: { checked: !selectedItems.includes(command.id) } }, command.id);
                                                     e.preventDefault(); // prevent the default action of scrolling the page
                                                 }
@@ -459,10 +526,8 @@ function History() {
 
                             <Button
                                 onClick={() => {
-                                    handleDelete(focusedCommandId).then(() => {
-                                        setCommands(commands.filter(command => command.id !== focusedCommandId));
-                                        setDrawerOpen(false);
-                                    });
+                                    setCommandToDelete(focusedCommandId);
+                                    handleOpenDialog();
                                 }}
                                 startIcon={<DeleteIcon />}
                             >
@@ -527,6 +592,27 @@ function History() {
                 </Drawer >
             </Box >
 
+            <Dialog
+                open={openDialog}
+                onClose={() => setOpenDialog(false)}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">{"Confirm Deletion"}</DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        Are you sure?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDialog(false)} color="primary">
+                        Cancel
+                    </Button>
+                    <Button onClick={performDelete} color="primary" autoFocus>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
             <Snackbar open={openSnackbar} autoHideDuration={1000} onClose={handleCloseSnackbar}>
                 <Alert onClose={handleCloseSnackbar} severity={snackbarMessage.startsWith('Error') ? 'error' : 'success'} sx={{ width: '100%' }}>
                     {snackbarMessage}

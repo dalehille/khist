@@ -1,45 +1,26 @@
 // nodejs server for khist. 
-// calls sqlite3 kwrapper database and returns json data
-// The database schema is defined in kwrapper.sh and looks like:
-// CREATE TABLE IF NOT EXISTS "kwrapper" (
-//    id INTEGER PRIMARY KEY AUTOINCREMENT,
-//    timestamp TEXT NOT NULL,
-//    command TEXT NOT NULL,
-//    output TEXT NOT NULL,
-//    exit_status INTEGER NOT NULL
-//);
-// there should be a route that returns all the data in the database
-// there should be a route that returns the data for an id
-// The 'output' data in the database is base64 encoded, so it needs to be decoded before being returned. It was created using the unix "script -q" command, 
-// and would contain color codes and other formatting. This needs to be sent to the client in a way that it can be displayed in a browser.
-// this will only run on the local machine, so no need for authentication or cors restrictions
-// the database is located in the home directory of a user in a .kwrapper directory and it is prefixed with the kubernetes context, for example: /Users/dale/.kwrapper/kind-kind_kwrapper.db
-// 
-
+// calls sqlite3 khist database and returns json data
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const atob = require('atob');
 const chokidar = require('chokidar');
 const WebSocket = require('ws');
-
+const path = require('path');
 const os = require('os');
-
 const cors = require('cors');
 
 const wss = new WebSocket.Server({ port: 8675 });
-
 const app = express();
 app.use(cors());
 
-
 // return a list of databases
-// the database name is the kubernetes context they will be prefixed with the kubernetes context, for example: ${os.homedir()}/.kwrapper/kind-kind_kwrapper.db
-// look in the .kwrapper directory and return a list of files that end in _kwrapper.db
+// the database name is the kubernetes context they will be prefixed with the kubernetes context, for example: ${os.homedir()}/.khist/kind-kind_khist.db
+// look in the .khist directory and return a list of files that end in _khist.db
 app.get('/dbs', (req, res) => {
     console.log('in /dbs');
     const fs = require('fs');
     const path = require('path');
-    const directoryPath = `${os.homedir()}/.kwrapper`;
+    const directoryPath = `${os.homedir()}/.khist`;
 
     fs.readdir(directoryPath, function (err, files) {
         if (err) {
@@ -48,8 +29,8 @@ app.get('/dbs', (req, res) => {
 
         let databases = [];
         files.forEach(function (file) {
-            if (file.endsWith('_kwrapper.db')) {
-                databases.push(file.replace('_kwrapper.db', ''));
+            if (file.endsWith('_khist.db')) {
+                databases.push(file.replace('_khist.db', ''));
             }
         });
         res.json(databases);
@@ -58,7 +39,7 @@ app.get('/dbs', (req, res) => {
 
 
 app.get('/data/:dbName', (req, res) => {
-    let dbPath = `${os.homedir()}/.kwrapper/${req.params.dbName}_kwrapper.db`;
+    let dbPath = `${os.homedir()}/.khist/${req.params.dbName}_khist.db`;
     if (!req.params.dbName || req.params.dbName === 'undefined') {
         return res.status(400).json({ error: 'Missing id parameter' });
     } else if (!req.params.dbName) {
@@ -71,12 +52,15 @@ app.get('/data/:dbName', (req, res) => {
         }
     });
 
-    db.all(`SELECT id, timestamp, command, output_size FROM kwrapper`, [], (err, rows) => {
+    db.all(`SELECT id, timestamp, command, output_size FROM khist`, [], (err, rows) => {
         if (err) {
             console.log(`error in /data/:dbName route: ${err}`)
             return res.status(500).json([]);
-            // return res.status(400).json({ error: 'dbName error', message: err });
         }
+        // Format the command field to in case it contains a path like /usr/homebrew/bin/kubecolor
+        rows.forEach(row => {
+            row.command = path.basename(row.command);
+        });
         // Send the initial data to the UI
         res.json(rows);
 
@@ -84,11 +68,15 @@ app.get('/data/:dbName', (req, res) => {
         let watcher = chokidar.watch(dbPath);
         watcher.on('change', () => {
             // When the database file changes, query the data and send it to all connected WebSocket clients
-            db.all(`SELECT id, timestamp, command, output_size FROM kwrapper`, [], (err, updatedRows) => {
+            db.all(`SELECT id, timestamp, command, output_size FROM khist`, [], (err, updatedRows) => {
                 if (err) {
                     console.log(`error in /data/:dbName route: ${err}`)
                     return res.status(500).json([]);
                 }
+                // Format the command field
+                updatedRows.forEach(row => {
+                    row.command = path.basename(row.command);
+                });
                 // Send the updated data to all connected WebSocket clients
                 updatedRows = Array.isArray(updatedRows) ? updatedRows : [updatedRows];
                 wss.clients.forEach(client => {
@@ -103,28 +91,26 @@ app.get('/data/:dbName', (req, res) => {
 
 // return just one row
 app.get('/data/:dbName/:id', (req, res) => {
-    console.log(req.params.dbName);
-    console.log(`id: ${req.params.id}`)
     if (!req.params.id || req.params.id === 'undefined') {
         console.log('Missing id parameter')
         return res.status(400).json({ error: 'Missing id parameter' });
     } else if (!req.params.dbName) {
         return res.status(400).json({ error: 'Missing dbName parameter' });
     }
-    let db = new sqlite3.Database(`${os.homedir()}/.kwrapper/${req.params.dbName}_kwrapper.db`, sqlite3.OPEN_READONLY, (err) => {
+    let db = new sqlite3.Database(`${os.homedir()}/.khist/${req.params.dbName}_khist.db`, sqlite3.OPEN_READONLY, (err) => {
         if (err) {
             console.error(err.message);
         }
-        console.log('/data/dbName/ - Connected to the kwrapper database.');
     });
 
-    console.log(`SELECT * FROM kwrapper WHERE id = ${req.params.id}`);
-    db.get(`SELECT * FROM kwrapper WHERE id = ?`, [req.params.id], (err, row) => {
+    console.log(`SELECT * FROM khist WHERE id = ${req.params.id}`);
+    db.get(`SELECT * FROM khist WHERE id = ?`, [req.params.id], (err, row) => {
         if (err) {
             throw err;
         }
         if (row) {
             row.output = atob(row.output); // decode base64
+            row.command = path.basename(row.command); // remove path from command in case it contains a path like /usr/homebrew/bin/kubecolor
             res.json(row);
         } else {
             res.status(404).send('Not found');
@@ -135,14 +121,14 @@ app.get('/data/:dbName/:id', (req, res) => {
 // a route that lets you delete a row
 app.delete('/data/:dbName/:id', (req, res) => {
     console.log(`delete id: ${req.params.id}`)
-    let db = new sqlite3.Database(`${os.homedir()}/.kwrapper/${req.params.dbName}_kwrapper.db`, sqlite3.OPEN_READWRITE, (err) => {
+    let db = new sqlite3.Database(`${os.homedir()}/.khist/${req.params.dbName}_khist.db`, sqlite3.OPEN_READWRITE, (err) => {
         if (err) {
             console.error(err.message);
             res.status(500).json({ message: 'Database error', error: err.message });
         }
     });
 
-    db.run(`DELETE FROM kwrapper WHERE id = ?`, [req.params.id], (err) => {
+    db.run(`DELETE FROM khist WHERE id = ?`, [req.params.id], (err) => {
         if (err) {
             res.status(500).json({ message: 'Database error', error: err.message });
         }

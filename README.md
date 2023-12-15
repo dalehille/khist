@@ -20,13 +20,21 @@ You can interact with the history in three ways:
 ## Getting Started
 
 - clone this repo
-- edit your .zshrc , .bashrc or equivalent for your shell and add an alist to the khist.sh script
+- edit your .zshrc , .bashrc or equivalent for your shell and add an alist to the khist.sh script or to the go/bin/khist binary
 
 ex:
 ```shell
-alias k=/Users/you/kubecapture/khist.sh
+cp go/bin/khist /usr/local/bin/
+alias k=khist
+# or
+# alias k=/Users/you/kubecapture/khist.sh
+
 alias kd='k get deploy'
 alias kp='k get pods'
+
+# or without an alias:
+go/bin/khist get pods -A
+
 ```
 - connect to your clusters and use kubectl as you normally would. Your commands and their output are stored in db files in your home directory in a `.khist` directory.
 
@@ -44,7 +52,7 @@ alias kp='k get pods'
 
 ### Prerequisites
 
-npm and nodejs if yuo want to run the web interface
+npm and nodejs if you want to run the web interface
 
 ## Why
 

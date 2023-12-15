@@ -1,15 +1,76 @@
 #!/bin/bash
 
-# a script that acts as a viewer for the kwrapper sqlite db so the user doesn't have to run sqlite3 commands
-# incorporates fzf for interactive filtering.
-# running khist.sh should show the user a list of all kubectl commands they've run in the past
+# a shell script that wraps the kubectl command and captures output 
+# goals:
+# 1. capture all output from kubectl commands and store them in a sqlite db
+# timestamp, command, output, output_size should be stored in the db
 
-export FZF_DEFAULT_OPTS='--color=bg+:#4c4846,bg:#423c3a,spinner:#fc6955,hl:#a29884,fg:#fcf6c2,header:#a29884,info:#9edc7d,pointer:#32CD32,marker:#32CD32,fg+:#98FB98,prompt:#fc6955,hl+:#32CD32'
+# The user should create an alias for kubectl that points to this script. example:
+# alias k=/Users/you/kubecapture/khist.sh
+# alias kd='k get deploy'
+# alias kp='k get pods'
+# add this as a line in your .bashrc or .zshrc file
 
-DB_PATH="$HOME/.kwrapper/$(kubectl config current-context)_kwrapper.db"
-COMMANDS=$(sqlite3 $DB_PATH "SELECT id, timestamp, output_size, command FROM kwrapper")
-SELECTED_COMMAND_ID=$(echo "$COMMANDS" | fzf --reverse --bind 'ctrl-j:down,ctrl-k:up' | cut -d '|' -f 1)
-OUTPUT_BASE64=$(sqlite3 $DB_PATH "SELECT output FROM kwrapper WHERE id = '$SELECTED_COMMAND_ID'")
-OUTPUT=$(echo "$OUTPUT_BASE64" | base64 --decode)
+# check if the output of this script is being displayed in the terminal. if so, use kubecolor to colorize the output
+# if not, just use kubectl to get the output and don't colorize it so that it can be piped to other commands like jq
+# without the color codes messing up the output
+if [ -t 1 ]; then
+    if command -v kubecolor &> /dev/null
+    then
+        original_command="kubecolor $@"
+    else
+        original_command="kubectl $@"
+    fi
+else
+    original_command="kubectl $@"
+fi
 
-printf "%b\n" "$OUTPUT"
+if [[ $original_command == *" exec "* ]]; then
+    # Run the command directly and don't store its output
+    $original_command 
+else
+    # Run the command in a pseudo-terminal and capture its output
+    output=$(script -q /dev/null $original_command | cat | base64)
+fi
+
+output_size=${#output}
+
+# we should have one database file per kube context. the db file should be named after the kube context
+context=$(kubectl config current-context 2>/dev/null)
+if [ $? -ne 0 ]; then
+    echo "Error getting current context from kubectl"
+    exit 1
+fi
+
+db_file="$HOME/.khist/${context}_khist.db"
+
+# create the directory if it doesn't exist
+mkdir -p $(dirname $db_file)
+
+# create db and table if they don't exist
+sqlite3 $db_file <<EOF
+CREATE TABLE IF NOT EXISTS khist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    command TEXT NOT NULL,
+    output TEXT NOT NULL,
+    output_size INTEGER NOT NULL
+);
+EOF
+
+timestamp=$(date +%Y-%m-%d\ %H:%M:%S)
+sqlite3 $db_file <<EOF
+INSERT INTO khist (timestamp, command, output, output_size) VALUES (
+    "$timestamp",
+    "$original_command",
+    "$output",
+    "$output_size"
+);
+EOF
+
+# print the output of the command to stdout so that it can be piped to other commands
+echo -e "$output" | base64 -d
+
+# example sqlite3 commands to query this data:
+# sqlite3 ~/.khist/kind-kind_khist.db "select * FROM khist;"
+# sqlite3 ~/.khist/gke_myproj1_us-east1_dev01_khist.db "select * FROM khist where command like '%get pods%';"

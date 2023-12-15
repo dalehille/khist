@@ -7,9 +7,9 @@ db_dir="$HOME/.khist"
 for db_file in "$db_dir"/*_khist.db; do
     echo "Updating $db_file"
     
-    # rename the table from 'khist' to 'khist'
+    # rename the table from 'kwrapper' to 'khist'
     sqlite3 "$db_file" <<EOF
-    ALTER TABLE khist RENAME TO khist;
+    ALTER TABLE kwrapper RENAME TO khist;
 EOF
 
 #     echo "Fixing $db_file"

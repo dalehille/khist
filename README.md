@@ -5,7 +5,13 @@ khist is a project that wraps the kubectl command and captures its output. It st
 You can interact with the history in three ways:
 
 1. Via the built-in web interface which provides a user-friendly way to view the history.
+
+![khist UI](khist-ui.png)
+
 2. Using getData.sh with `fzf` for a fuzzy search through the history.
+
+![shell](khist-cli.png)
+
 3. Directly via the SQLite database with your own code
 
 

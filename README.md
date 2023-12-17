@@ -39,16 +39,20 @@ alias kp='k get pods'
 - connect to your clusters and use kubectl as you normally would. Your commands and their output are stored in db files in your home directory in a `.khist` directory.
 
 ## start the backend
-- cd node
-- npm install
-- npm run dev
+```shell
+cd node
+npm install
+npm run dev
+```
 
 ## start the ui
-- cd ui
-- npm install
-- npm run dev
+```shell
+cd ui
+npm install
+npm run dev
 
-- open http://localhost:5173
+open http://localhost:5173
+```
 
 ### Prerequisites
 

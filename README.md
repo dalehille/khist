@@ -24,7 +24,7 @@ You can interact with the history in three ways:
 
 ex:
 ```shell
-cp khist /usr/local/bin/
+cp go/khist_mac_m1 /usr/local/bin/khist
 alias k=khist
 # or
 # alias k=/Users/you/kubecapture/khist.sh

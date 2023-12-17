@@ -54,6 +54,12 @@ alias kp='k get pods'
 
 npm and nodejs if you want to run the web interface
 
+## Compatibility
+
+This project has been tested on an M1 Mac. However, Go binaries are provided for both Intel Mac and Linux platforms. While these binaries are available, they may not have been tested. Your feedback and contributions to improve compatibility are welcome.
+
+For Windows users, the project might work if you're using the Windows Subsystem for Linux (WSL). In this case, you should use the `khist.sh` script instead of the `khist` binary. Please note that this has not been tested and feedback is appreciated.
+
 ## Why
 
 While the `history` command in a shell provides a list of commands that have been entered, it doesn't provide any of the output from those commands. This can make it difficult to recall exactly what was returned from a specific command, especially when debugging or auditing. khist addresses this issue by not only capturing the commands entered but also their output.

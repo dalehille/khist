@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -59,13 +58,7 @@ func execCommand(command string) {
 
 func runAndStoreCommand(command string) {
 	// Wrap the command with 'script' to capture the terminal output
-	// scriptWrappedCommand := "script -q /dev/null " + command
-	var scriptWrappedCommand string
-	if runtime.GOOS == "linux" {
-		scriptWrappedCommand = "script -q -c " + command + " /dev/null"
-	} else {
-		scriptWrappedCommand = "script -q /dev/null " + command
-	}
+	scriptWrappedCommand := "script -q /dev/null " + command
 
 	// Split the command string into the command and its arguments
 	parts := strings.Fields(scriptWrappedCommand)

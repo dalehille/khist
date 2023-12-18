@@ -11,6 +11,9 @@ CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o ${PROGRAM_NAME}_mac_intel mai
 GOOS=darwin GOARCH=arm64 go build -o ${PROGRAM_NAME}_mac_m1 main.go
 
 # Linux
-GOOS=linux GOARCH=amd64 go build -o ${PROGRAM_NAME}_linux main.go
+#GOOS=linux GOARCH=amd64 go build -o ${PROGRAM_NAME}_linux_amd64 main.go
+
+# Linux arm
+#CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o ${PROGRAM_NAME}_linux_arm64 main.go
 
 echo "Build complete"

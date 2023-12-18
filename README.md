@@ -56,13 +56,13 @@ open http://localhost:5173
 
 ### Prerequisites
 
-npm and nodejs if you want to run the web interface
+- [sqlite3](https://www.sqlite.org/index.html) if you're using khist.sh
+
+- npm and nodejs if you want to run the web interface
 
 ## Compatibility
 
-This project has been tested on an M1 Mac. However, Go binaries are provided for both Intel Mac and Linux platforms. While these binaries are available, they may not have been tested. Your feedback and contributions to improve compatibility are welcome.
-
-For Windows users, the project might work if you're using the Windows Subsystem for Linux (WSL). In this case, you should use the `khist.sh` script instead of the `khist` binary. Please note that this has not been tested and feedback is appreciated.
+This project has been tested on an M1 and Intel Mac. 
 
 ## Why
 

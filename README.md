@@ -56,7 +56,9 @@ open http://localhost:5173
 
 ### Prerequisites
 
-npm and nodejs if you want to run the web interface
+- [sqlite3](https://www.sqlite.org/index.html) if you're using khist.sh
+
+- npm and nodejs if you want to run the web interface
 
 ## Compatibility
 

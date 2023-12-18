@@ -30,7 +30,11 @@ if [[ $original_command == *" exec "* ]]; then
     $original_command 
 else
     # Run the command in a pseudo-terminal and capture its output
-    output=$(script -q /dev/null $original_command | cat | base64)
+    if [[ "$(uname)" == "Linux" ]]; then
+        output=$(script -q -c "$original_command" /dev/null | cat | base64)
+    else
+        output=$(script -q "$original_command" /dev/null | cat | base64)
+    fi
 fi
 
 output_size=${#output}

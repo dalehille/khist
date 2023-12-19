@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef, createRef } from 'react'
-import * as ReactDOM from "react-dom/client";
-import {
-    createBrowserRouter,
-    RouterProvider,
-    useParams
-} from "react-router-dom";
+import { useParams } from "react-router-dom";
 import AnsiToHtml from 'ansi-to-html';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -20,7 +15,6 @@ import Fade from '@mui/material/Fade';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -240,14 +234,6 @@ function History() {
         }
     };
 
-    const w = (event, id) => {
-        if (event.target.checked) {
-            setSelectedItems([...selectedItems, id]);
-        } else {
-            setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-        }
-    };
-
     const performDelete = () => {
         if (Array.isArray(commandToDelete)) {
             Promise.all(commandToDelete.map(id => deleteCommand(id)))
@@ -289,45 +275,10 @@ function History() {
             });
     };
 
-    const handleDelete = (commandId) => {
-        setCommandToDelete(commandId);
-        handleOpenDialog();
-        // return new Promise((resolve, reject) => {
-        //     fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
-        //         method: 'DELETE',
-        //     })
-        //         .then(response => {
-        //             if (!response.ok) {
-        //                 throw new Error('Network response was not ok');
-        //             }
-        //             resolve();
-        //         })
-        //         .catch(error => {
-        //             setSnackbarMessage(`Error: ${error.message}`);
-        //             setOpenSnackbar(true);
-        //             reject(error);
-        //         });
-        // });
-    };
-
     const handleDeleteSelected = () => {
         setCommandToDelete(selectedItems);
         handleOpenDialog();
-
-        // Promise.all(selectedItems.map(id => handleDelete(id)))
-        //     .then(() => {
-        //         setCommands(commands.filter(command => !selectedItems.includes(command.id)));
-        //         setSelectedItems([]);
-        //         setEditMode(false);
-        //         setShowDeleteCancelButtons(false);
-        //         setSnackbarMessage('Command deleted successfully!');
-        //         setOpenSnackbar(true);
-        //     })
-        //     .catch(error => {
-        //         console.error('Failed to delete some items:', error);
-        //     });
     };
-
 
     const handleCheckboxChange = (event, id) => {
         if (event.target.checked) {
@@ -336,7 +287,6 @@ function History() {
             setSelectedItems(selectedItems.filter(itemId => itemId !== id));
         }
     };
-
 
     const handleCancel = () => {
         setSelectedItems([]);
@@ -357,7 +307,20 @@ function History() {
             marginLeft="2vw"
             marginRight="2vw"
         >
-            <Typography variant="h5" component="h1" gutterBottom onClick={handleContextClick} style={{ cursor: 'pointer', color: 'blue' }}>
+            <Typography
+                variant="h5"
+                component="h1"
+                gutterBottom
+                onClick={handleContextClick}
+                style={{
+                    cursor: 'pointer',
+                    color: '#007BFF',
+                    textDecoration: 'none',
+                    fontWeight: 'bold',
+                    borderBottom: '4px solid #007BFF',
+                    marginBottom: '16px',
+                }}
+            >
                 {routeId}
             </Typography>
             <Menu
@@ -405,9 +368,9 @@ function History() {
                     </>
                 )}
             </Box>
-            <Box display="flex">
+            <Box style={{ display: 'flex' }}>
 
-                <List style={{ width: '100%' }}>
+                <List style={{ width: '100%', marginTop: '8px' }}>
                     {commands
                         .filter((command) => {
                             return command.command.toLowerCase().includes(searchTerm.toLowerCase());

@@ -13,6 +13,20 @@ const wss = new WebSocket.Server({ port: 8675 });
 const app = express();
 app.use(cors());
 
+// Create a map to store clients and their corresponding databases
+let clientDbMap = new Map();
+
+// When a client connects, store the database they're interested in
+wss.on('connection', (ws, req) => {
+    const dbName = req.url.split('/')[2];
+    clientDbMap.set(ws, dbName);
+});
+
+// When a client disconnects, remove them from the map
+wss.on('close', (ws) => {
+    clientDbMap.delete(ws);
+});
+
 // return a list of databases
 // the database name is the kubernetes context they will be prefixed with the kubernetes context, for example: ${os.homedir()}/.khist/kind-kind_khist.db
 // look in the .khist directory and return a list of files that end in _khist.db
@@ -80,7 +94,7 @@ app.get('/data/:dbName', (req, res) => {
                 // Send the updated data to all connected WebSocket clients
                 updatedRows = Array.isArray(updatedRows) ? updatedRows : [updatedRows];
                 wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
+                    if (client.readyState === WebSocket.OPEN && clientDbMap.get(client) === req.params.dbName) {
                         client.send(JSON.stringify(updatedRows));
                     }
                 });

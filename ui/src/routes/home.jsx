@@ -65,7 +65,7 @@ function Home() {
             <Typography variant="h4" component="h1" gutterBottom>
                 k8s history
             </Typography>
-            <Box sx={{ width: '30%' }}> {/* Add this Box */}
+            <Box sx={{ width: '30%' }}>
 
                 <TextField
                     variant="outlined"

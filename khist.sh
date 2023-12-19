@@ -25,18 +25,6 @@ else
     original_command="kubectl $@"
 fi
 
-# # if [[ $original_command == *" exec "* ]]; then
-# if [[ $original_command == *" exec "* ]] || [[ $original_command == *"--watch"* ]] || [[ $original_command == *"-w"* ]]; then
-#     # Run the command directly and don't store its output
-#     $original_command 
-# else
-#     # Run the command in a pseudo-terminal and capture its output
-#     if [[ "$(uname)" == "Linux" ]]; then
-#         output=$(script -q -c "$original_command" /dev/null | cat | base64)
-#     else
-#         output=$(script -q "$original_command" /dev/null | cat | base64)
-#     fi
-# fi
 directCommands=(" exec " "--watch" " -w" " attach " " port-forward " " proxy ")
 shouldRunDirectly=false
 for directCommand in "${directCommands[@]}"; do

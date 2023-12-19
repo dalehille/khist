@@ -20,8 +20,31 @@ func main() {
 	// Determine the command to run (kubectl or kubecolor)
 	commandToRun := determineCommand(os.Args[1:], isTerminal)
 
-	// Handle 'exec' commands differently so we don't store them in the database
-	if strings.Contains(commandToRun, " exec ") {
+	// Commands to be run directly without storing their output
+	directCommands := []string{" exec ", "--watch", " -w", " attach ", " port-forward ", " proxy "}
+
+	// Check if the commandToRun contains any of the directCommands
+	shouldRunDirectly := false
+	for _, directCommand := range directCommands {
+		if strings.Contains(commandToRun, directCommand) {
+			shouldRunDirectly = true
+			break
+		}
+	}
+
+	// Special handling for "logs -f" and "logs --follow" as the flags can appear anywhere after "logs"
+	parts := strings.Fields(commandToRun)
+	for i, part := range parts {
+		if part == "logs" && i < len(parts)-1 {
+			remainingParts := strings.Join(parts[i+1:], " ")
+			if strings.Contains(remainingParts, "-f") || strings.Contains(remainingParts, "--follow") {
+				shouldRunDirectly = true
+				break
+			}
+		}
+	}
+
+	if shouldRunDirectly {
 		execCommand(commandToRun)
 	} else {
 		runAndStoreCommand(commandToRun)

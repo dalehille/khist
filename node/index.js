@@ -73,7 +73,9 @@ app.get('/data/:dbName', (req, res) => {
         }
         // Format the command field to in case it contains a path like /usr/homebrew/bin/kubecolor
         rows.forEach(row => {
-            row.command = path.basename(row.command);
+            const parts = row.command.split(' ');
+            parts[0] = path.basename(parts[0]);
+            row.command = parts.join(' ');
         });
         // Send the initial data to the UI
         res.json(rows);
@@ -89,7 +91,9 @@ app.get('/data/:dbName', (req, res) => {
                 }
                 // Format the command field
                 updatedRows.forEach(row => {
-                    row.command = path.basename(row.command);
+                    const parts = row.command.split(' ');
+                    parts[0] = path.basename(parts[0]);
+                    row.command = parts.join(' ');
                 });
                 // Send the updated data to all connected WebSocket clients
                 updatedRows = Array.isArray(updatedRows) ? updatedRows : [updatedRows];
@@ -124,7 +128,9 @@ app.get('/data/:dbName/:id', (req, res) => {
         }
         if (row) {
             row.output = atob(row.output); // decode base64
-            row.command = path.basename(row.command); // remove path from command in case it contains a path like /usr/homebrew/bin/kubecolor
+            const parts = row.command.split(' ');
+            parts[0] = path.basename(parts[0]);
+            row.command = parts.join(' ');
             res.json(row);
         } else {
             res.status(404).send('Not found');

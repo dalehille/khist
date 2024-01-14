@@ -88,11 +88,7 @@ func runAndStoreCommand(command string) {
 	cmd := exec.Command(parts[0], parts[1:]...)
 
 	// Run the command and capture its output
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error executing command:", err)
-		return
-	}
+	output, _ := cmd.CombinedOutput()
 
 	outputStr := string(output)
 	outputStr = strings.ReplaceAll(outputStr, "^D", "") // Remove "^D"

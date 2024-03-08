@@ -1,10 +1,5 @@
 ```shell
-./bin/khist get pods
-```
-
-or:
-```shell
-mv ./bin/khist /usr/local/bin
+cp khist_mac_m1 /usr/local/bin/khist 
 alias k=khist
 k get pods
 ```

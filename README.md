@@ -1,6 +1,6 @@
 # khist
 
-khist is a project that wraps the kubectl command and captures its output. It stores the timestamp, command, output, and output size in a SQLite database. This tool is especially useful for debugging and auditing purposes in a Kubernetes environment.
+khist wraps the kubectl command and captures its output. It stores the timestamp, command, output, and output size in a SQLite database. This tool is especially useful for debugging and auditing purposes in a Kubernetes environment.
 
 You can interact with the history in three ways:
 
@@ -19,46 +19,38 @@ You can interact with the history in three ways:
 
 ## Getting Started
 
-- clone this repo
-- edit your .zshrc , .bashrc or equivalent for your shell and add an alist to the khist.sh script or to the khist binary
+- Download the [latest releaese](https://github.com/dalehille/khist/releases) for your platform to get the khist binary
+- Edit your .zshrc , .bashrc or equivalent and add an alias to khist 
+- Clone this repo to run the ui
 
-ex:
+example:
 ```shell
-cp go/khist_mac_m1 /usr/local/bin/khist
+# get the latest release 
+wget https://github.com/dalehille/khist/releases/download/v0.1.0/khist_mac_m1.tar.gz
+tar -xvf khist_mac_m1.tar.gz
+
+# connect to a k8s cluster and run a command to make sure it works
+./khist_mac_m1 get pods
+
+# copy to a bin directory on your PATH
+cp khist_mac_m1 /usr/local/bin/khist
+
+# set whatever alias you want
 alias k=khist
-# or
-# alias k=/Users/you/kubecapture/khist.sh
-
-alias kd='k get deploy'
-alias kp='k get pods'
-
-# or without an alias:
-./khist get pods -A
-
-```
-- connect to your clusters and use kubectl as you normally would. Your commands and their output are stored in db files in your home directory in a `.khist` directory.
-
-## start the backend
-```shell
-cd node
-npm install
-npm run dev
+k get pods
 ```
 
-## start the ui
-```shell
-cd ui
-npm install
-npm run dev
+- Now your commands and their output are stored in `.db` files in your home directory in a `.khist` directory.
 
-open http://localhost:5173
+## start the backend and ui
+```shell
+./start.sh
 ```
 
 ### Prerequisites
 
-- [sqlite3](https://www.sqlite.org/index.html) if you're using khist.sh
-
 - npm and nodejs if you want to run the web interface
+
 
 ## Compatibility
 

@@ -31,7 +31,6 @@ wss.on('close', (ws) => {
 // the database name is the kubernetes context they will be prefixed with the kubernetes context, for example: ${os.homedir()}/.khist/kind-kind_khist.db
 // look in the .khist directory and return a list of files that end in _khist.db
 app.get('/dbs', (req, res) => {
-    console.log('in /dbs');
     const fs = require('fs');
     const path = require('path');
     const directoryPath = `${os.homedir()}/.khist`;
@@ -121,7 +120,6 @@ app.get('/data/:dbName/:id', (req, res) => {
         }
     });
 
-    console.log(`SELECT * FROM khist WHERE id = ${req.params.id}`);
     db.get(`SELECT * FROM khist WHERE id = ?`, [req.params.id], (err, row) => {
         if (err) {
             throw err;

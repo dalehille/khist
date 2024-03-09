@@ -1,30 +1,20 @@
-// import './App.css'
-import React, { useState, useEffect, useRef, createRef } from 'react'
-// import * as ReactDOM from "react-dom/client";
-import {
-  Routes,
-  Route,
-} from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+import Header from './Header';
+import History from './History';
+import Home from './Home';
 
-import Home from './routes/home';
-import History from './routes/history';
-
-
-function App() {
+function App({ setMode }) {
 
   return (
-
-    <div>
+    <>
+      <Header setMode={setMode} />
       <Routes>
-
         <Route index element={<Home />} />
         <Route path=":routeId" element={<History />} />
-
       </Routes>
-    </div>
-
-
+    </>
   )
 }
+
 
 export default App

@@ -1,35 +1,59 @@
-// import React from 'react'
-// import ReactDOM from 'react-dom/client'
-// import App from './App.jsx'
-// import './index.css'
-// import { BrowserRouter } from 'react-router-dom'
-
-// ReactDOM.createRoot(document.getElementById('root')).render(
-//   <App />
-// )
-
-import React, { useState } from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
+import { useState, useMemo, StrictMode, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
 import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter } from 'react-router-dom'
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+
+import App from './App';
+
+const rootElement = document.getElementById('root');
 
 function Main() {
 
+  // const [mode, setMode] = useState('dark');
+  const [mode, setMode] = useState(localStorage.getItem('themeMode') || 'dark');
+
+  // Update localStorage whenever the mode changes
+  useEffect(() => {
+    localStorage.setItem('themeMode', mode);
+  }, [mode]);
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: mode,
+          background: {
+            default: mode === 'dark' ? '#121212' : '#eeeeee',
+            paper: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+          },
+          text: {
+            primary: mode === 'dark' ? '#ffffff' : '#1a1a1a',
+            secondary: mode === 'dark' ? '#b3b3b3' : '#4f4f4f',
+          },
+          custom: {
+            listItem: {
+              hoverBackground: mode === 'dark' ? '#333333' : '#d6d6d6',
+              hoverText: mode === 'dark' ? '#ffffff' : '#000000',
+            },
+          },
+        },
+      }),
+    [mode]
+  );
   return (
-    <>
-      <CssBaseline />
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </>
+    <StrictMode>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <App setMode={setMode} />
+        </BrowserRouter>
+      </ThemeProvider>
+    </StrictMode>
   );
 }
 
-const rootElement = document.getElementById('root');
 let root;
-
-
 if (import.meta.hot) {
   // If the module is hot-reloadable, use the existing root if it exists
   root = rootElement._reactRootContainer?.root ?? createRoot(rootElement);

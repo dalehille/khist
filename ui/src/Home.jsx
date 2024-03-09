@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useRef, createRef } from 'react'
-import * as ReactDOM from "react-dom/client";
-import {
-    createBrowserRouter,
-    RouterProvider,
-    useParams
-} from "react-router-dom";
-import AnsiToHtml from 'ansi-to-html';
+import { useState, useEffect, useRef, createRef } from 'react'
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import { TextField } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { Link } from 'react-router-dom';
+
 
 function Home() {
     const [databases, setDatabases] = useState([]);
     const [filterText, setFilterText] = useState("");
+
+    const theme = useTheme();
+
 
     useEffect(() => {
         fetch(`http://localhost:3003/dbs`)
@@ -60,16 +59,18 @@ function Home() {
             flexDirection="column"
             justifyContent="center"
             alignItems="center"
-            marginTop="5vh" // margin top for spacing from the top of the viewport
+            marginTop="5vh"
         >
-            <Typography variant="h4" component="h1" gutterBottom>
-                k8s history
+            <Typography component="h4" gutterBottom>
+                Choose a cluster
             </Typography>
-            <Box sx={{ width: '30%' }}>
+            <Box sx={{ width: { xs: '90%', sm: '65%' } }}>
 
                 <TextField
+                    id="cluster-filter"
                     variant="outlined"
-                    placeholder="k8s context"
+                    placeholder="search..."
+                    size="small"
                     value={filterText}
                     onChange={e => setFilterText(e.target.value)}
                     onKeyDown={(e) => {
@@ -83,39 +84,54 @@ function Home() {
                     inputRef={searchInputRef}
                     fullWidth
                 />
-                <List sx={{ bgcolor: 'background.paper' }}>
+                <List>
                     {databases.filter(db => db.toLowerCase().includes(filterText.toLowerCase())).map((db, index) => (
 
                         <ListItem
                             key={db}
-                            component="a"
-                            href={`/${db}`}
+                            component={Link}
+                            to={`/${db}`}
                             ref={listItemRefs.current[index]}
                             tabIndex={0}
+                            style={style.listItem}
                             sx={{
-                                mb: 1,
+                                color: 'text.primary',
                                 borderRadius: '4px',
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 '&:hover': {
-                                    bgcolor: 'primary.light',
-                                    color: 'white',
+                                    bgcolor: theme.palette.custom.listItem.hoverBackground,
+                                    color: theme.palette.custom.listItem.hoverText,
                                 },
-                                textDecoration: 'none',
-                                textAlign: 'center'
+                                mb: 1,
                             }}
-
                         >
-                            <ListItemText primary={db} sx={{ textAlign: 'center' }} />
+                            <ListItemText primary={db} style={style.listItemText} />
                         </ListItem>
 
                     ))}
                 </List>
             </Box>
 
-        </Box>
+        </Box >
     );
 
+}
+
+const style = {
+    listItem: {
+        width: '100%',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    listItemText: {
+        width: '100%',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        textAlign: 'center',
+    },
 }
 
 export default Home

@@ -10,8 +10,6 @@ import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { TextField } from '@mui/material';
-import Collapse from '@mui/material/Collapse';
-import Fade from '@mui/material/Fade';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
@@ -23,6 +21,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
+import path from 'path';
 
 const convert = new AnsiToHtml({ newline: true });
 
@@ -33,10 +32,8 @@ function History() {
     const [clickedDate, setClickedDate] = useState('');
     const [output, setOutput] = useState('');
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [drawerWidth, setDrawerWidth] = useState('60vw'); // Default width
+    const [drawerWidth, setDrawerWidth] = useState('60vw');
     const [searchTerm, setSearchTerm] = useState('');
-    const [open, setOpen] = useState([]);
-    const [fade, setFade] = useState([]);
     const [openSnackbar, setOpenSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [focusedCommandId, setFocusedCommandId] = useState(null);
@@ -45,10 +42,12 @@ function History() {
     const [showDeleteCancelButtons, setShowDeleteCancelButtons] = useState(false);
     const [openDialog, setOpenDialog] = useState(false);
     const [commandToDelete, setCommandToDelete] = useState(null);
+    const [selectedDatabase, setSelectedDatabase] = useState(routeId);
 
     const [anchorEl, setAnchorEl] = useState(null);
 
     const listItemRefs = useRef([]);
+
 
     const handleOpenDialog = () => {
         setOpenDialog(true);
@@ -64,8 +63,6 @@ function History() {
     }, []);
 
     useEffect(() => {
-        setOpen(commands.map(() => false));
-        setFade(commands.map(() => false));
         listItemRefs.current = commands.map(() => createRef());
     }, [commands]);
 
@@ -77,13 +74,12 @@ function History() {
         setAnchorEl(null);
     };
 
+    const [databases, setDatabases] = useState([]);
+
     const handleMenuItemClick = (database) => {
-        // Navigate to the new route
-        window.location.href = `/${database}`;
+        setSelectedDatabase(database);
         handleClose();
     };
-
-    const [databases, setDatabases] = useState([]);
 
     useEffect(() => {
         fetch(`http://localhost:3003/dbs`)
@@ -107,7 +103,6 @@ function History() {
                     event.stopPropagation();
                 }
             }
-
         };
 
         window.addEventListener('keydown', handleGlobalKeyDown);
@@ -115,67 +110,65 @@ function History() {
     }, [listItemRefs, searchInputRef]);
 
     useEffect(() => {
-        const timeouts = commands.map((_, index) =>
-            setTimeout(() => {
-                setOpen(prevOpen => {
-                    const newOpen = [...prevOpen];
-                    newOpen[index] = true;
-                    return newOpen;
-                });
-            }, index * 80)
-        );
-
-        return () => timeouts.forEach(clearTimeout); // Clean up on unmount
-    }, [commands]);
-
-    useEffect(() => {
-        const timeouts = commands.map((_, index) =>
-            setTimeout(() => {
-                setFade(prevFade => {
-                    const newFade = [...prevFade];
-                    newFade[index] = true;
-                    return newFade;
-                });
-            }, index * 90)
-        );
-
-        return () => timeouts.forEach(clearTimeout); // Clean up on unmount
-    }, [commands]);
-
-    useEffect(() => {
-        listItemRefs.current = commands.map(() => createRef());
-    }, [commands]);
-
-
-    useEffect(() => {
-        const ws = new WebSocket(`ws://localhost:8675/data/${routeId}`);
-
-        ws.onopen = () => {
-            ws.send(routeId); // Send the routeId to the server when the connection is established
-        };
-
-        ws.onmessage = (event) => {
-            const newData = JSON.parse(event.data);
-            setCommands(newData);
-
-        };
-
-        return () => {
-            ws.close();
-        };
-    }, [routeId]); // Re-run the effect when routeId changes
-
-    useEffect(() => {
-        fetch(`http://localhost:3003/data/${routeId}`)
+        // Fetch initial data
+        fetch(`http://localhost:3003/data/${selectedDatabase}`)
             .then(response => response.json())
             .then(data => {
                 setCommands(data);
-                setFade(data.map(() => false)); // Initialize fade state here
+
+                // Establish WebSocket connection after initial data is fetched
+                const wsUrl = `ws://localhost:8675/data/${selectedDatabase}`;
+
+                let webSocket = null;
+                let reconnectTimeout = null;
+
+                const connectWebSocket = () => {
+                    webSocket = new WebSocket(wsUrl);
+
+                    webSocket.onopen = () => {
+                        clearTimeout(reconnectTimeout); // Clear the reconnect timeout on successful connection
+                    };
+
+                    webSocket.onmessage = event => {
+                        const newData = JSON.parse(event.data);
+                        setCommands(newData);
+                    };
+
+                    webSocket.onerror = error => {
+                        console.error("WebSocket error:", error);
+                        // Attempt to reconnect after a delay
+                        reconnectTimeout = setTimeout(() => {
+                            console.log("Attempting to reconnect WebSocket...");
+                            connectWebSocket();
+                        }, 5000);
+                    };
+
+                    webSocket.onclose = event => {
+                        console.log("WebSocket connection closed", event.reason);
+                        // Attempt to reconnect after a delay
+                        reconnectTimeout = setTimeout(() => {
+                            console.log("Attempting to reconnect WebSocket...");
+                            connectWebSocket();
+                        }, 5000);
+                    };
+                };
+
+                connectWebSocket();
+
+                // Cleanup function to close WebSocket connection and clear reconnect timeout
+                return () => {
+                    if (webSocket) {
+                        webSocket.close();
+                    }
+                    if (reconnectTimeout) {
+                        clearTimeout(reconnectTimeout);
+                    }
+                };
             });
-    }, []);
+    }, [selectedDatabase]);
 
     const handleClick = (commandId) => {
-        fetch(`http://localhost:3003/data/${routeId}/${commandId}`)
+        fetch(`http://localhost:3003/data/${selectedDatabase}/${commandId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -184,6 +177,7 @@ function History() {
                     setOutput(convert.toHtml(data.output));
                 }
                 setClickedCommand(data.command);
+                // setClickedCommand(path.basename(data.command));
                 setClickedDate(data.timestamp);
             });
     };
@@ -260,7 +254,7 @@ function History() {
     };
 
     const deleteCommand = (commandId) => {
-        return fetch(`http://localhost:3003/data/${routeId}/${commandId}`, {
+        return fetch(`http://localhost:3003/data/${selectedDatabase}/${commandId}`, {
             method: 'DELETE',
         })
             .then(response => {
@@ -297,6 +291,9 @@ function History() {
         setShowDeleteCancelButtons(selectedItems.length > 0);
     }, [selectedItems]);
 
+    function getBasename(path) {
+        return path.split('/').pop();
+    }
     return (
         <Box
             display="flex"
@@ -308,20 +305,20 @@ function History() {
             marginRight="2vw"
         >
             <Typography
-                variant="h5"
+                variant="h6"
                 component="h1"
                 gutterBottom
                 onClick={handleContextClick}
                 style={{
                     cursor: 'pointer',
-                    color: '#007BFF',
+                    // color: '#C5B4E3',
                     textDecoration: 'none',
                     fontWeight: 'bold',
-                    borderBottom: '4px solid #007BFF',
+                    // borderBottom: '2px solid #C5B4E3',
                     marginBottom: '16px',
                 }}
             >
-                {routeId}
+                {selectedDatabase}
             </Typography>
             <Menu
                 id="simple-menu"
@@ -344,6 +341,7 @@ function History() {
                 <TextField
                     id="search-box"
                     label="Filter"
+                    size="small"
                     variant="outlined"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -377,87 +375,89 @@ function History() {
                         })
                         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                         .map((command, index) => (
-                            <Collapse in={open[index]} timeout="auto" unmountOnExit key={command.id + command.timestamp}>
-                                <Fade in={fade[index]} timeout={500}>
-                                    <div
-                                        onClick={() => {
-                                            if (!editMode) {
+                            <React.Fragment
+                                key={index + "-" + command.id + "-" + command.timestamp}
+                            >
+                                <div
+                                    onClick={() => {
+                                        if (!editMode) {
+                                            handleListItemClick(command.id);
+                                        }
+                                    }}
+                                >
+                                    <ListItem
+                                        key={command.id + "-" + command.timestamp}
+                                        onFocus={() => setFocusedCommandId(command.id)}
+                                        ref={listItemRefs.current[index]}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !editMode) {
                                                 handleListItemClick(command.id);
                                             }
+                                            if (editMode && (e.key === ' ' || e.key === 'Enter')) {
+                                                handleCheckboxChange({ target: { checked: !selectedItems.includes(command.id) } }, command.id);
+                                                e.preventDefault(); // prevent the default action of scrolling the page
+                                            }
+                                        }}
+
+                                        sx={{
+                                            mb: 1,
+                                            borderRadius: '4px',
+                                            border: '1px solid',
+                                            borderColor: '#C5B4E3',
+                                            textDecoration: 'none',
+                                            textAlign: 'left'
                                         }}
                                     >
-                                        <ListItem
-                                            onFocus={() => setFocusedCommandId(command.id)}
-                                            ref={listItemRefs.current[index]}
-                                            tabIndex={0}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !editMode) {
-                                                    handleListItemClick(command.id);
-                                                }
-                                                if (editMode && (e.key === ' ' || e.key === 'Enter')) {
-                                                    handleCheckboxChange({ target: { checked: !selectedItems.includes(command.id) } }, command.id);
-                                                    e.preventDefault(); // prevent the default action of scrolling the page
-                                                }
-                                            }}
-
-                                            sx={{
-                                                mb: 1,
-                                                borderRadius: '4px',
-                                                border: '1px solid',
-                                                borderColor: '#C5B4E3',
-                                                textDecoration: 'none',
-                                                textAlign: 'left'
-                                            }}
-                                        >
-                                            {editMode && (
-                                                <Checkbox
-                                                    checked={selectedItems.includes(command.id)}
-                                                    onChange={(e) => handleCheckboxChange(e, command.id)}
-                                                />
-                                            )}
-                                            <ListItemText
-                                                primary={
-                                                    <React.Fragment>
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            color="textPrimary"
-                                                            style={{ marginRight: '16px', fontWeight: 'bold' }}
-                                                        >
-                                                            {command.id}
-                                                        </Typography>
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            color="textSecondary"
-                                                            style={{ marginRight: '16px' }}
-                                                        >
-                                                            {command.timestamp}
-                                                        </Typography>
-
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            color="textPrimary"
-                                                            style={{ fontWeight: 'bold' }}
-                                                        >
-                                                            {command.command}
-                                                        </Typography>
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            color="textSecondary"
-                                                            style={{ marginLeft: '6px' }}
-                                                        >
-                                                            ({formatBytes(command.output_size)})
-                                                        </Typography>
-                                                    </React.Fragment>
-                                                }
+                                        {editMode && (
+                                            <Checkbox
+                                                checked={selectedItems.includes(command.id)}
+                                                onChange={(e) => handleCheckboxChange(e, command.id)}
                                             />
-                                        </ListItem>
-                                    </div>
-                                </Fade>
-                            </Collapse>
+                                        )}
+                                        <ListItemText
+                                            primary={
+                                                <React.Fragment>
+                                                    <Typography
+                                                        component="span"
+                                                        variant="body2"
+                                                        color="textPrimary"
+                                                        style={{ marginRight: '16px', fontWeight: 'bold' }}
+                                                    >
+                                                        {command.id}
+                                                    </Typography>
+                                                    <Typography
+                                                        component="span"
+                                                        variant="body2"
+                                                        color="textSecondary"
+                                                        style={{ marginRight: '16px' }}
+                                                    >
+                                                        {command.timestamp}
+                                                    </Typography>
+
+                                                    <Typography
+                                                        component="span"
+                                                        variant="body2"
+                                                        color="textPrimary"
+                                                        style={{ fontWeight: 'bold' }}
+                                                    >
+                                                        {getBasename(command.command)}
+                                                        {/* {command.command} */}
+                                                    </Typography>
+                                                    <Typography
+                                                        component="span"
+                                                        variant="body2"
+                                                        color="textSecondary"
+                                                        style={{ marginLeft: '6px' }}
+                                                    >
+                                                        ({formatBytes(command.output_size)})
+                                                    </Typography>
+                                                </React.Fragment>
+                                            }
+                                        />
+                                    </ListItem>
+                                </div>
+                            </React.Fragment>
 
                         ))}
                 </List>
